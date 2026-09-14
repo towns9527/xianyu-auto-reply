@@ -1,0 +1,46 @@
+# xianyu-gateway：闲鱼消息 → AI agent 的兼容层（Webhook 推送 + MCP 工具）
+#
+# 启用方式（二选一）：
+#   1) .env 中加入：COMPOSE_FILE=docker-compose.yml:docker-compose.gateway.yml
+#   2) 命令行：docker compose -f docker-compose.yml -f docker-compose.gateway.yml up -d
+#
+# 说明见 xianyu-gateway/README.md
+services:
+  backend-web:
+    environment:
+      # 默认回复 API 回调指向 docker 网络内的网关，需放行内网地址
+      - REPLY_API_ALLOW_PRIVATE=true
+
+  websocket:
+    environment:
+      - REPLY_API_ALLOW_PRIVATE=true
+
+  xianyu-gateway:
+    build:
+      context: ./xianyu-gateway
+    image: xianyu-gateway:local
+    container_name: xianyu-gateway
+    restart: unless-stopped
+    environment:
+      - XY_API_BASE=http://backend-web:8089/api/v1
+      - MESSAGE_SEND_API_KEY=${MESSAGE_SEND_API_KEY:?请在 .env 中设置 MESSAGE_SEND_API_KEY}
+      - GATEWAY_BOT_TOKEN=${GATEWAY_BOT_TOKEN:?请在 .env 中设置 GATEWAY_BOT_TOKEN}
+      - GATEWAY_HOOK_SECRET=${GATEWAY_HOOK_SECRET:?请在 .env 中设置 GATEWAY_HOOK_SECRET}
+      - AGENT_WEBHOOK_URL=${AGENT_WEBHOOK_URL:-}
+      - AGENT_WEBHOOK_TOKEN=${AGENT_WEBHOOK_TOKEN:-}
+      - AGENT_WEBHOOK_AUTH_HEADER=${AGENT_WEBHOOK_AUTH_HEADER:-Authorization}
+      - AGENT_WEBHOOK_AUTH_SCHEME=${AGENT_WEBHOOK_AUTH_SCHEME:-Bearer}
+      - SHADOW_MODE=${SHADOW_MODE:-true}
+      - DEBOUNCE_SECONDS=${GATEWAY_DEBOUNCE_SECONDS:-3}
+      - ACK_TIMEOUT_SECONDS=${GATEWAY_ACK_TIMEOUT_SECONDS:-600}
+      - DATA_DIR=/data
+      - TZ=Asia/Shanghai
+    volumes:
+      - ${GATEWAY_DATA_DIR:-./xianyu-gateway/data}:/data
+    ports:
+      - "${GATEWAY_PORT:-8788}:8788"
+    networks:
+      - xianyu-network
+    depends_on:
+      backend-web:
+        condition: service_healthy
