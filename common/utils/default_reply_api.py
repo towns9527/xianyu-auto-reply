@@ -1,7 +1,7 @@
 """默认回复 API 类型公共工具
 
 职责（被后端保存校验、websocket 运行时调用共同复用，避免重复实现）：
-1. 校验用户填写的 API 地址合法性，并防范 SSRF（禁止指向内网/回环地址）。
+1. 校验用户填写的 API 地址合法性，并防范 SSRF（禁止指向回环/链路本地地址；内网地址默认禁止，可由 REPLY_API_ALLOW_PRIVATE 放行）。
 2. 调用外部 API（POST），将消息内容传给对方接口。
 3. 解析对方返回内容：兼容 JSON（{"reply": "..."} / {"success", "reply"}）与纯文本两种格式。
 """
@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import ipaddress
 import json
+import os
 import socket
 from typing import Optional, Tuple
 from urllib.parse import urlparse
@@ -21,6 +22,16 @@ DEFAULT_API_TIMEOUT = 80
 # 超时时间允许范围（秒）
 MIN_API_TIMEOUT = 1
 MAX_API_TIMEOUT = 120
+
+
+def _allow_private_network() -> bool:
+    """是否允许回调地址指向内网（RFC1918 私网 / IPv6 ULA）。
+
+    适用于回调服务与本系统部署在同一内网（如 docker 网络、局域网 agent）的场景。
+    由环境变量 REPLY_API_ALLOW_PRIVATE 控制，默认关闭；开启后仍拒绝回环、链路本地（含云元数据地址）、
+    保留、组播和未指定地址。
+    """
+    return os.getenv("REPLY_API_ALLOW_PRIVATE", "").strip().lower() in ("1", "true", "yes", "on")
 
 
 def validate_api_url(api_url: str) -> Tuple[bool, str]:
@@ -61,14 +72,15 @@ def validate_api_url(api_url: str) -> Tuple[bool, str]:
         except ValueError:
             continue
         if (
-            ip_obj.is_private
-            or ip_obj.is_loopback
+            ip_obj.is_loopback
             or ip_obj.is_link_local
             or ip_obj.is_reserved
             or ip_obj.is_multicast
             or ip_obj.is_unspecified
         ):
-            return False, "API地址不允许指向内网或回环地址"
+            return False, "API地址不允许指向回环、链路本地或保留地址"
+        if ip_obj.is_private and not _allow_private_network():
+            return False, "API地址不允许指向内网地址（如需使用内网回调，请设置 REPLY_API_ALLOW_PRIVATE=true）"
 
     return True, ""
 

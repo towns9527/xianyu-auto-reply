@@ -94,6 +94,8 @@ services:
       - EXTERNAL_API_KEY=${EXTERNAL_API_KEY:-zhinian_bk}
       # /api/v1/messages/send 的秘钥；不配置则该接口禁用
       - MESSAGE_SEND_API_KEY=${MESSAGE_SEND_API_KEY:-}
+      # 默认回复 API 是否允许回调内网地址（同内网部署 agent/网关时开启）
+      - REPLY_API_ALLOW_PRIVATE=${REPLY_API_ALLOW_PRIVATE:-false}
       - FRONTEND_PUBLIC_URL=${FRONTEND_PUBLIC_URL:-}
       - AUTO_START_CRAWL_JOBS=${AUTO_START_CRAWL_JOBS:-true}
       - REMOTE_OFFICIAL_BASE_URL=${REMOTE_OFFICIAL_BASE_URL:-https://xy.zhinianboke.com}
@@ -152,6 +154,8 @@ services:
       - CAPTCHA_DRISSIONPAGE_FALLBACK_ENABLED=${CAPTCHA_DRISSIONPAGE_FALLBACK_ENABLED:-false}
       - CAPTCHA_DRISSIONPAGE_TIMEOUT=${CAPTCHA_DRISSIONPAGE_TIMEOUT:-25}
       - CAPTCHA_DRISSIONPAGE_HEADLESS=${CAPTCHA_DRISSIONPAGE_HEADLESS:-true}
+      # 默认回复 API 是否允许回调内网地址（同内网部署 agent/网关时开启）
+      - REPLY_API_ALLOW_PRIVATE=${REPLY_API_ALLOW_PRIVATE:-false}
       - BACKEND_WEB_SERVICE_URL=http://backend-web:8089
       - INTERNAL_API_TOKEN=${INTERNAL_API_TOKEN:-}
       - STATIC_DIR=/app/static
